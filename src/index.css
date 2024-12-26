@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply h-full antialiased;
+  }
+  body {
+    @apply h-full text-gray-900 bg-gray-100;
+  }
+  #root {
+    @apply h-full;
+  }
+}
+
+@layer components {
+  .game-button {
+    @apply px-4 py-2 font-semibold text-white transition-colors duration-200 rounded-lg bg-game-purple-blue hover:bg-opacity-90 active:bg-opacity-100;
+  }
+  
+  .game-card {
+    @apply p-4 bg-white rounded-lg shadow-md;
+  }
+  
+  .game-text {
+    @apply text-lg leading-relaxed;
+  }
+}
