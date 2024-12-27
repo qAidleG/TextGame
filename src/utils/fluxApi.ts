@@ -20,8 +20,8 @@ export async function generateImage(prompt: string, apiKey: string): Promise<str
     
     const requestPayload = {
       prompt,
-      width: 1024,
-      height: 768,
+      width: 768,
+      height: 1024,
       prompt_upsampling: false,
       safety_tolerance: 6,
       output_format: 'jpeg'
@@ -88,7 +88,10 @@ export async function generateImage(prompt: string, apiKey: string): Promise<str
 
     // First check immediately
     let imageUrl = await checkResult();
-    if (imageUrl) return imageUrl;
+    if (imageUrl) {
+      console.log('Image ready on first check');
+      return imageUrl;
+    }
     
     while (attempts < maxAttempts) {
       attempts++;
@@ -98,7 +101,10 @@ export async function generateImage(prompt: string, apiKey: string): Promise<str
       await new Promise(resolve => setTimeout(resolve, pollInterval));
       
       imageUrl = await checkResult();
-      if (imageUrl) return imageUrl;
+      if (imageUrl) {
+        console.log('Image ready after polling');
+        return imageUrl;
+      }
     }
 
     throw new Error(`Image generation timed out after ${maxAttempts * (pollInterval/1000)} seconds`);

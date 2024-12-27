@@ -5,13 +5,24 @@ export const SYSTEM_PROMPT = `You are running an interactive text adventure game
 4. Track and reference the player's previous decisions
 5. Incorporate the time of day into scene descriptions
 6. Manage the game's currency (essence) based on player actions
+7. Always provide a "Sleep till tomorrow" option during NIGHT time
+8. Generate end-of-day recaps when the player chooses to sleep
 
 The game world is a mysterious realm where:
 - Magic and technology coexist
 - Time of day affects available actions and encounters
 - Players can collect and spend 'essence' as currency
 - Choices have consequences that persist throughout the story
-- The environment changes dynamically based on time of day`;
+- The environment changes dynamically based on time of day
+- Each day ends with a recap of achievements and progress
+- Sleep advances time to the next MORNING
+
+End of day recaps should include:
+- Essence earned and spent
+- New locations discovered
+- Important interactions or decisions made
+- Quest progress
+- Any special events or achievements`;
 
 export const SCENE_TEMPLATE = `[Time: {{timeOfDay}}]
 [Player Essence: {{essence}}]
@@ -34,6 +45,14 @@ export interface GameContext {
   completedQuests: string[];
   relationships: Record<string, number>;
   currentLocation: string;
+  dayNumber: number;
+  dailyProgress: {
+    essenceEarned: number;
+    essenceSpent: number;
+    newLocations: string[];
+    keyDecisions: string[];
+    questProgress: string[];
+  };
 }
 
 export const INITIAL_CONTEXT: GameContext = {
@@ -43,7 +62,15 @@ export const INITIAL_CONTEXT: GameContext = {
   visitedLocations: ['starting_room'],
   completedQuests: [],
   relationships: {},
-  currentLocation: 'starting_room'
+  currentLocation: 'starting_room',
+  dayNumber: 1,
+  dailyProgress: {
+    essenceEarned: 0,
+    essenceSpent: 0,
+    newLocations: [],
+    keyDecisions: [],
+    questProgress: []
+  }
 };
 
 export const TIME_MODIFIERS = {
@@ -69,7 +96,7 @@ export const TIME_MODIFIERS = {
   }
 };
 
-export const RESPONSE_STRUCTURE = {
+export interface ResponseStructure {
   description: string;
   dialog: string;
   actions: Array<{
@@ -79,13 +106,35 @@ export const RESPONSE_STRUCTURE = {
     essenceReward?: number;
     requiresItem?: string;
     timeRestriction?: string[];
+    isSleepOption?: boolean;
   }>;
   metadata: {
     mood: string;
     tension: number;
     availableNPCs: string[];
     hiddenClues: string[];
+    isEndOfDay?: boolean;
+    dailyRecap?: {
+      essenceEarned: number;
+      essenceSpent: number;
+      newLocations: string[];
+      keyDecisions: string[];
+      questProgress: string[];
+      dayNumber: number;
+    };
   };
+}
+
+export const RESPONSE_STRUCTURE: ResponseStructure = {
+  description: '',
+  dialog: '',
+  actions: [],
+  metadata: {
+    mood: '',
+    tension: 0,
+    availableNPCs: [],
+    hiddenClues: [],
+  }
 };
 
 export function generatePrompt(context: GameContext, playerAction?: string): string {
