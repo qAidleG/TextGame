@@ -16,11 +16,14 @@ export default function TimeOfDayIndicator({ currentTime, day = 0 }: TimeOfDayIn
   const timeSteps: TimeOfDay[] = ['MORNING', 'NOON', 'EVENING', 'NIGHT'];
   const currentIndex = timeSteps.indexOf(currentTime);
 
+  // Format the day display
+  const dayDisplay = day === 0 ? 'Night 0' : `Day ${day}`;
+
   return (
     <div className="flex flex-col gap-2 pl-4">
       {/* Day and Time Display */}
       <div className="text-white text-sm font-medium">
-        Day {day} - {currentTime}
+        {dayDisplay} - {currentTime}
       </div>
       
       {/* Time Indicator */}

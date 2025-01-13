@@ -11,6 +11,8 @@ import {
   MapIcon,
   Cog6ToothIcon,
   XCircleIcon,
+  EyeIcon,
+  EyeSlashIcon,
 } from '@heroicons/react/24/outline';
 import { generateImage } from '../utils/fluxApi';
 import { GameState } from '../App';
@@ -30,12 +32,9 @@ interface GameOption {
 export default function GameScreen({ gameState, setGameState, onExit, onSettings }: GameScreenProps) {
   const [isEssenceChanging, setIsEssenceChanging] = useState(false);
   const [showExitOptions, setShowExitOptions] = useState(false);
-  const [showDayRecap, setShowDayRecap] = useState(false);
-  const [morningTransition, setMorningTransition] = useState<{
-    sceneText: string;
-    dialogText: string;
-    options: Array<{ text: string }>;
-  } | null>(null);
+  const [textInput, setTextInput] = useState('');
+  const [showTextInput, setShowTextInput] = useState(false);
+  const [hideUI, setHideUI] = useState(false);
 
   // Add useEffect to handle essence changes
   useEffect(() => {
@@ -241,7 +240,7 @@ export default function GameScreen({ gameState, setGameState, onExit, onSettings
               role: "user",
               content: [{ 
                 type: "text", 
-                text: `The player has selected: "${opt.text}". Please provide the next scene in JSON format with the following structure: { timeOfDay: string, sceneText: string (2-3 sentences describing the scene and atmosphere), dialogText: string (must start with 'Speaker: ' followed by the message), options: Array<{ text: string }> }`
+                text: `The player has selected: "${opt.text}". Please provide the next scene in JSON format with the following structure: { timeOfDay: string, sceneText: string (2-3 sentences describing the scene and atmosphere), dialogText: string (must start with 'Speaker: ' followed by the message), imagePrompt: string (a detailed prompt for generating an image of the scene and any speaking characters), options: Array<{ text: string }> }`
               }]
             }
           ],
@@ -288,21 +287,32 @@ export default function GameScreen({ gameState, setGameState, onExit, onSettings
   };
 
   const handleSleep = async () => {
-    const apiKey = localStorage.getItem('grokApiKey');
-    if (!apiKey) {
+    try {
+      const apiKey = localStorage.getItem('grokApiKey');
+      if (!apiKey) {
+        setGameState(prev => ({
+          ...prev,
+          scene: {
+            ...prev.scene,
+            sceneText: "Please set your API key in the settings first.",
+            dialogText: "Narrator: You'll need an API key to continue.",
+            options: []
+          }
+        }));
+        return;
+      }
+
+      // Show loading state
       setGameState(prev => ({
         ...prev,
         scene: {
           ...prev.scene,
-          sceneText: "Please set your API key in the settings first.",
-          dialogText: "Narrator: You'll need an API key to continue.",
+          sceneText: "...",
+          dialogText: "...",
           options: []
         }
       }));
-      return;
-    }
 
-    try {
       const response = await fetch('https://api.x.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -318,11 +328,10 @@ export default function GameScreen({ gameState, setGameState, onExit, onSettings
                 type: "text", 
                 text: JSON.stringify({
                   currentState: {
-                    phase: 'exploring',
+                    phase: gameState.phase,
                     essence: gameState.essence,
                     timeOfDay: gameState.timeOfDay,
-                    lastScene: gameState.scene,
-                    day: gameState.day
+                    lastScene: gameState.scene
                   },
                   gameLore: RULES,
                   instructions: API_INSTRUCTIONS
@@ -333,7 +342,7 @@ export default function GameScreen({ gameState, setGameState, onExit, onSettings
               role: "user",
               content: [{ 
                 type: "text", 
-                text: "The player has chosen to sleep till morning. Please provide a day recap and next morning scene in JSON format with the following structure: { timeOfDay: 'MORNING', sceneText: string (2-3 sentences describing the morning scene), dialogText: string (must start with 'Speaker: ' followed by the message), options: Array<{ text: string }>, metadata: { dailyRecap: { dayNumber: number, essenceEarned: number, essenceSpent: number, newLocations: string[], keyDecisions: string[], questProgress: string[] } } }"
+                text: "The player has chosen to sleep until morning. Please provide the next scene in JSON format with the following structure: { timeOfDay: string, sceneText: string (2-3 sentences describing the morning scene and atmosphere), dialogText: string (must start with 'Speaker: ' followed by the message), imagePrompt: string (a detailed prompt for generating an image of the morning scene), options: Array<{ text: string }> }"
               }]
             }
           ],
@@ -352,17 +361,39 @@ export default function GameScreen({ gameState, setGameState, onExit, onSettings
       const cleanedResponse = responseText.replace(/```json\n|\n```/g, '').trim();
       const apiResponse = JSON.parse(cleanedResponse);
 
-      // Show the day recap and store API response for the morning transition
-      setShowDayRecap(true);
+      // Update game state for morning
       setGameState(prev => ({
         ...prev,
-        dayRecap: apiResponse.metadata.dailyRecap
+        day: prev.day + 1,
+        timeOfDay: 'MORNING',
+        scene: {
+          ...prev.scene,
+          sceneText: apiResponse.sceneText,
+          dialogText: apiResponse.dialogText,
+          options: apiResponse.options.map((opt: GameOption) => ({
+            text: opt.text,
+            action: async () => await handleOptionSelect(opt)
+          }))
+        }
       }));
-      setMorningTransition({
-        sceneText: apiResponse.sceneText,
-        dialogText: apiResponse.dialogText,
-        options: apiResponse.options
-      });
+
+      // Generate new image if prompt exists
+      if (apiResponse.imagePrompt) {
+        const fluxApiKey = localStorage.getItem('fluxApiKey');
+        if (fluxApiKey) {
+          generateImage(apiResponse.imagePrompt, fluxApiKey).then(newImage => {
+            setGameState(prev => ({
+              ...prev,
+              scene: {
+                ...prev.scene,
+                sceneImage: newImage
+              }
+            }));
+          }).catch(error => {
+            console.error('Image generation failed:', error);
+          });
+        }
+      }
 
     } catch (error) {
       console.error('Sleep Action Error:', error);
@@ -371,6 +402,117 @@ export default function GameScreen({ gameState, setGameState, onExit, onSettings
         scene: {
           ...prev.scene,
           sceneText: "There was an error processing your rest. Please try again.",
+          dialogText: "Narrator: Something went wrong with the magic...",
+          options: []
+        }
+      }));
+    }
+  };
+
+  const handleCustomResponse = async () => {
+    if (!textInput.trim()) return;
+    
+    const input = textInput.trim();
+    setTextInput('');
+    setShowTextInput(false);
+    
+    // Show loading state
+    setGameState(prev => ({
+      ...prev,
+      scene: {
+        ...prev.scene,
+        sceneText: "...",
+        dialogText: "...",
+        options: []
+      }
+    }));
+
+    try {
+      const response = await fetch('https://api.x.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('grokApiKey')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: "grok-2-1212",
+          messages: [
+            {
+              role: "system",
+              content: [{ 
+                type: "text", 
+                text: JSON.stringify({
+                  currentState: {
+                    phase: 'exploring',
+                    essence: gameState.essence,
+                    timeOfDay: gameState.timeOfDay,
+                    lastScene: gameState.scene
+                  },
+                  gameLore: RULES,
+                  instructions: API_INSTRUCTIONS
+                })
+              }]
+            },
+            {
+              role: "user",
+              content: [{ 
+                type: "text", 
+                text: `The player says: "${input}". Please provide the next scene in JSON format with the following structure: { timeOfDay: string, sceneText: string (2-3 sentences describing the scene and atmosphere, with a focus on erotic elements), dialogText: string (must start with 'Speaker: ' followed by a sexually suggestive or explicit message), imagePrompt: string (a detailed prompt for generating an image of the scene and any speaking characters, including their sexual activities), options: Array<{ text: string }> }`
+              }]
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 1000,
+          stream: false
+        })
+      });
+
+      if (!response.ok) throw new Error('API call failed');
+
+      const data = await response.json();
+      const responseText = data.choices[0].message.content;
+      const cleanedResponse = responseText.replace(/```json\n|\n```/g, '').trim();
+      const apiResponse = JSON.parse(cleanedResponse);
+
+      // Update state with response
+      setGameState(prev => ({
+        ...prev,
+        timeOfDay: apiResponse.timeOfDay,
+        scene: {
+          ...prev.scene,
+          sceneText: apiResponse.sceneText,
+          dialogText: apiResponse.dialogText,
+          options: apiResponse.options.map((opt: GameOption) => ({
+            text: opt.text,
+            action: async () => await handleOptionSelect(opt)
+          }))
+        }
+      }));
+
+      // Generate new image if prompt exists
+      if (apiResponse.imagePrompt) {
+        const fluxApiKey = localStorage.getItem('fluxApiKey');
+        if (fluxApiKey) {
+          generateImage(apiResponse.imagePrompt, fluxApiKey).then(newImage => {
+            setGameState(prev => ({
+              ...prev,
+              scene: {
+                ...prev.scene,
+                sceneImage: newImage
+              }
+            }));
+          }).catch(error => {
+            console.error('Image generation failed:', error);
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Custom Response Error:', error);
+      setGameState(prev => ({
+        ...prev,
+        scene: {
+          ...prev.scene,
+          sceneText: "There was an error processing your response. Please try again.",
           dialogText: "Narrator: Something went wrong with the magic...",
           options: []
         }
@@ -391,8 +533,32 @@ export default function GameScreen({ gameState, setGameState, onExit, onSettings
         {/* Gradient background */}
         <div className={`absolute inset-0 ${getBackgroundGradient(gameState.timeOfDay)}`} />
         
+        {/* Scene Image - Full height background */}
+        {gameState.scene.sceneImage && (
+          <div className="absolute inset-2 rounded-2xl overflow-hidden">
+            <img 
+              src={gameState.scene.sceneImage} 
+              alt="Scene" 
+              className="w-full h-full object-cover rounded-2xl"
+            />
+          </div>
+        )}
+
+        {/* Hide/Show UI Button */}
+        <button
+          onClick={() => setHideUI(!hideUI)}
+          className="absolute top-4 right-4 z-50 bg-black bg-opacity-40 hover:bg-opacity-60 
+                     backdrop-blur-sm text-white p-2 rounded-full transition-all"
+        >
+          {hideUI ? (
+            <EyeIcon className="w-6 h-6" />
+          ) : (
+            <EyeSlashIcon className="w-6 h-6" />
+          )}
+        </button>
+        
         {/* Game content */}
-        <div className="relative flex flex-col h-full">
+        <div className={`relative flex flex-col h-full transition-opacity duration-300 ${hideUI ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
           {/* Top Bar */}
           <div className="bg-black bg-opacity-20 backdrop-blur-sm p-2">
             <div className="container mx-auto flex justify-between items-center">
@@ -414,17 +580,6 @@ export default function GameScreen({ gameState, setGameState, onExit, onSettings
           <div className="flex-1 p-4 flex flex-col">
             {/* Game Content */}
             <div className="space-y-4 relative h-full">
-              {/* Scene Image - Full height background */}
-              {gameState.scene.sceneImage && (
-                <div className="absolute inset-0 rounded-lg overflow-hidden">
-                  <img 
-                    src={gameState.scene.sceneImage} 
-                    alt="Scene" 
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              )}
-
               {/* Content overlay */}
               <div className="relative z-10 h-full flex flex-col">
                 {/* Spacer to push content to bottom */}
@@ -466,22 +621,54 @@ export default function GameScreen({ gameState, setGameState, onExit, onSettings
                     </button>
                   ) : (
                     <div className="space-y-2">
+                      {/* Text Input */}
+                      {showTextInput ? (
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={textInput}
+                            onChange={(e) => setTextInput(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && handleCustomResponse()}
+                            placeholder="Type your response..."
+                            className="flex-1 bg-black bg-opacity-40 backdrop-blur-sm text-white p-3 rounded-lg 
+                                      border border-gray-600 focus:border-indigo-400 outline-none"
+                          />
+                          <button
+                            onClick={handleCustomResponse}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 rounded-lg"
+                          >
+                            Send
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setShowTextInput(true)}
+                          className="w-full bg-indigo-600 bg-opacity-60 hover:bg-opacity-70 
+                                   backdrop-blur-sm text-white p-3 rounded-lg transition-all
+                                   border border-indigo-400/30"
+                        >
+                          Type Custom Response
+                        </button>
+                      )}
+
+                      {/* Existing Options */}
                       {gameState.scene.options.map((option, index) => (
                         <button
                           key={index}
                           onClick={option.action}
                           className="w-full bg-black bg-opacity-40 hover:bg-opacity-50 
-                                   backdrop-blur-sm text-white p-3 rounded-lg transition-all drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]"
+                                   backdrop-blur-sm text-white p-3 rounded-lg transition-all"
                         >
                           {option.text}
                         </button>
                       ))}
-                      {/* Add Sleep option during night */}
+
+                      {/* Sleep Option */}
                       {gameState.timeOfDay === 'NIGHT' && (
                         <button
                           onClick={handleSleep}
                           className="w-full bg-indigo-900 bg-opacity-60 hover:bg-opacity-70 
-                                   backdrop-blur-sm text-white p-3 rounded-lg transition-all drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]
+                                   backdrop-blur-sm text-white p-3 rounded-lg transition-all
                                    border border-indigo-400/30"
                         >
                           Sleep till tomorrow
@@ -523,112 +710,40 @@ export default function GameScreen({ gameState, setGameState, onExit, onSettings
               <span className="text-[10px]">Exit</span>
             </button>
           </div>
+        </div>
 
-          {/* Day Recap Overlay */}
-          {showDayRecap && gameState.dayRecap && morningTransition && (
-            <div className="absolute inset-0 bg-black bg-opacity-90 flex items-start justify-center p-8 pt-20">
-              <div className="bg-black bg-opacity-60 backdrop-blur-md rounded-lg p-6 w-full max-w-md text-white">
-                <h2 className="text-2xl font-bold mb-4 text-amber-400">Day {gameState.dayRecap.dayNumber} Complete</h2>
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-amber-400 font-semibold">Essence</h3>
-                    <p>Earned: ⟠{gameState.dayRecap.essenceEarned}</p>
-                    <p>Spent: ⟠{gameState.dayRecap.essenceSpent}</p>
-                  </div>
-                  {gameState.dayRecap.newLocations.length > 0 && (
-                    <div>
-                      <h3 className="text-amber-400 font-semibold">Discovered</h3>
-                      <ul className="list-disc list-inside">
-                        {gameState.dayRecap.newLocations.map((location, i) => (
-                          <li key={i}>{location}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {gameState.dayRecap.keyDecisions.length > 0 && (
-                    <div>
-                      <h3 className="text-amber-400 font-semibold">Key Decisions</h3>
-                      <ul className="list-disc list-inside">
-                        {gameState.dayRecap.keyDecisions.map((decision, i) => (
-                          <li key={i}>{decision}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {gameState.dayRecap.questProgress.length > 0 && (
-                    <div>
-                      <h3 className="text-amber-400 font-semibold">Quest Progress</h3>
-                      <ul className="list-disc list-inside">
-                        {gameState.dayRecap.questProgress.map((progress, i) => (
-                          <li key={i}>{progress}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  <button
-                    onClick={() => {
-                      setShowDayRecap(false);
-                      setGameState(prev => ({
-                        ...prev,
-                        day: prev.day + 1,
-                        timeOfDay: 'MORNING',
-                        dayRecap: undefined,
-                        scene: {
-                          ...prev.scene,
-                          sceneText: morningTransition.sceneText,
-                          dialogText: morningTransition.dialogText,
-                          options: morningTransition.options.map((newOpt: GameOption) => ({
-                            text: newOpt.text,
-                            action: async () => await handleOptionSelect(newOpt)
-                          }))
-                        }
-                      }));
-                      setMorningTransition(null);
-                    }}
-                    className="w-full mt-6 bg-indigo-900 bg-opacity-60 hover:bg-opacity-70 
-                             backdrop-blur-sm text-white p-3 rounded-lg transition-all
-                             border border-indigo-400/30 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]"
-                  >
-                    Continue to Morning
-                  </button>
-                </div>
+        {/* Exit Dialog */}
+        {showExitOptions && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-black bg-opacity-40 backdrop-blur-md rounded-lg p-6 max-w-sm w-full text-white">
+              <h2 className="text-xl font-bold mb-4">Exit Game</h2>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => {
+                    // TODO: Implement save and quit
+                    onExit();
+                  }}
+                  className="bg-black bg-opacity-40 hover:bg-opacity-50 p-3 rounded-lg"
+                >
+                  Save and Quit
+                </button>
+                <button
+                  onClick={onExit}
+                  className="bg-red-900 bg-opacity-40 hover:bg-opacity-50 p-3 rounded-lg"
+                >
+                  Quit without Saving
+                </button>
+                <button
+                  onClick={() => setShowExitOptions(false)}
+                  className="text-gray-400 hover:text-gray-300"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* Exit Dialog */}
-      {showExitOptions && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-black bg-opacity-40 backdrop-blur-md rounded-lg p-6 max-w-sm w-full text-white">
-            <h2 className="text-xl font-bold mb-4">Exit Game</h2>
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={() => {
-                  // TODO: Implement save and quit
-                  onExit();
-                }}
-                className="bg-black bg-opacity-40 hover:bg-opacity-50 p-3 rounded-lg"
-              >
-                Save and Quit
-              </button>
-              <button
-                onClick={onExit}
-                className="bg-red-900 bg-opacity-40 hover:bg-opacity-50 p-3 rounded-lg"
-              >
-                Quit without Saving
-              </button>
-              <button
-                onClick={() => setShowExitOptions(false)}
-                className="text-gray-400 hover:text-gray-300"
-              >
-                Cancel
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 } 

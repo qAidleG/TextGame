@@ -7,7 +7,6 @@ export interface GameState {
   stats: {
     health: number;
     energy: number;
-    progress: number;
   };
 }
 

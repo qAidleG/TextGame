@@ -21,8 +21,14 @@ export class GrokService {
       inventory: [],
       visitedLocations: ['starting_room'],
       completedQuests: [],
-      relationships: {},
-      currentLocation: 'starting_room'
+      currentLocation: 'starting_room',
+      dayNumber: 1,
+      dailyProgress: {
+        essenceEarned: 0,
+        essenceSpent: 0,
+        newLocations: [],
+        keyDecisions: []
+      }
     };
   }
 

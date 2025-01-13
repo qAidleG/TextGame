@@ -3,11 +3,11 @@ import { TimeOfDay } from '../types/game';
 export const WORLD_SETTING = {
   name: 'Aethoria',
   era: 'Age of Convergence',
-  description: 'A realm where magic meets technology, existing in perpetual twilight. Time is malleable, and reality shifts between dimensions.'
+  description: 'A realm where magic meets technology, existing in perpetual twilight. Time is malleable, and reality shifts between dimensions, creating endless possibilities for sensual encounters and erotic adventures.'
 };
 
 export const ESSENCE_LORE = {
-  description: 'Crystallized magical energy serving as both currency and life force. Represents connection to the world\'s magic.',
+  description: 'Crystallized magical energy serving as both currency and life force. Represents connection to the worlds sexualmagic.',
   uses: ['Trade', 'Power', 'Spells', 'Influence'],
   collection: ['Quests', 'Mysteries', 'Aid', 'Discovery']
 };
@@ -44,11 +44,11 @@ export const ROMANCE_SYSTEM = {
   hearts: {
     max: 10,
     milestones: {
-      2: 'Personal stories shared',
-      4: 'Unique preferences revealed',
-      6: 'Magical moment occurs',
-      8: 'Deep secret revealed',
-      10: 'Partnership possible'
+      2: 'Sexual partnership possible',
+      4: 'Unique sexual kinks shared and explored',
+      6: 'Erotic magical moment occurs',
+      8: 'Deep sexual secret revealed',
+      10: 'Sex Slave Engaged'
     }
   },
   building: {
@@ -77,14 +77,14 @@ export const ROMANCE_SYSTEM = {
     name: 'Luna',
     role: 'Dream Weaver',
     place: 'Twilight Market',
-    trait: 'Mysterious, creative',
-    likes: ['Star fragments', 'Dream crystals', 'Rare books'],
-    story: 'Weaves dreams into art, guides newcomers to Aethoria'
+    trait: 'Mysterious, creative, sexually adventurous',
+    likes: ['Star fragments', 'Dream crystals', 'Rare books', 'Erotic art'],
+    story: 'Weaves dreams into art, guides newcomers to Aethoria, and enjoys sharing sensual experiences with them'
   }
 };
 
 export const COTTAGE = {
-  desc: 'Your magical dwelling, evolving with your journey',
+  desc: 'Your magical dwelling, exuiped with a sex starved pixy always seducing you, evolving with your journey',
   stages: {
     1: {
       name: 'Twilight Cottage',
@@ -125,65 +125,32 @@ export const RULES = {
     day: 24,
     period: 6,
     transition: 1
-  },
-  progress: {
-    ranks: ['Initiate', 'Seeker', 'Adept', 'Master', 'Sage'],
-    unlocks: {
-      SEEKER: 'First major quest',
-      ADEPT: 'Master essence',
-      MASTER: 'All districts',
-      SAGE: 'All secrets'
-    }
-  },
-  relations: {
-    daily_talks: 3,
-    gift_cooldown: '24h',
-    points: {
-      talk: 10,
-      loved_gift: 100,
-      liked_gift: 50,
-      quest: 150
-    },
-    decay: {
-      daily: -2,
-      birthday_miss: -50,
-      bad_gift: -30
-    }
-  },
-  upgrades: {
-    reqs: {
-      2: 'Seeker rank, first relationship milestone',
-      3: 'Master essence, one 8-heart bond',
-      4: 'All district quests, one 10-heart bond'
-    },
-    essence_gen: {
-      1: 5,
-      2: 15,
-      3: 40,
-      4: 100
-    }
   }
 };
 
 export const API_INSTRUCTIONS = {
   timeControl: {
-    description: "You control the time of day (MORNING, NOON, DUSK, NIGHT) through the narrative. Change it when it makes sense for the story.",
-    states: ["MORNING", "NOON", "DUSK", "NIGHT"]
+    description: "You control the time of day (MORNING, NOON, DUSK, NIGHT) through the narrative. Change it when it makes sense for the story. The day count starts at 0 and increases by 1 each time the state changes to MORNING.",
+    states: ["MORNING", "NOON", "DUSK", "NIGHT"],
+    dayCount: {
+      start: 0,
+      increment: "Increase day count by 1 when transitioning to MORNING"
+    }
   },
   sceneFormat: {
-    sceneText: "Provide a vivid 2-3 sentence description of the current scene, focusing on the environment, atmosphere, and any notable visual elements. This appears in the top text box.",
-    dialogText: "Format dialog as 'Speaker: message' in the bottom text box. Use 'Narrator:' for general narration, character names like 'Eve:' for dialog, or descriptive speakers like 'Mysterious Voice:' when appropriate.",
-    options: "Provide 2-4 meaningful choices that advance the story or allow for exploration"
+    sceneText: "Provide a vivid 2-3 sentence description of the current scene, focusing on the environment, atmosphere, and any notable visual elements, with a strong emphasis on erotic elements and sexual tension. This appears in the top text box",
+    dialogText: "Format dialog as 'Speaker: message' in the bottom text box. Use 'Narrator:' for general narration, character names like 'Eve:' for dialog, or descriptive speakers like 'Seductive Voice:' when appropriate. Dialog should be sexually suggestive or explicit.",
+    options: "Provide 2-4 meaningful choices that advance the story, allow for exploration, or lead to various sexual encounters and experiences"
   },
   narrativeStyle: {
-    tone: "Maintain a whimsical, magical tone while being grounded in the cottage-core aesthetic",
-    pacing: "Balance between descriptive world-building and engaging character interactions",
-    consistency: "Remember previous choices and maintain narrative continuity"
+    tone: "Maintain a whimsical, magical tone while being grounded in the cottage-core aesthetic, infused with a sensual, erotic atmosphere",
+    pacing: "Balance between descriptive world-building and engaging character interactions, with a focus on steamy sexual encounters",
+    consistency: "Remember previous sexual choices and maintain narrative continuity, ensuring that the player's erotic journey progresses seamlessly"
   },
   characterVoices: {
-    narrator: "Observant and atmospheric, describing the magical elements with wonder",
-    eve: "The mysterious guide who appears later, speaks with gentle wisdom about magic and nature",
-    player: "Choices should reflect a range of reasonable reactions and intentions"
+    narrator: "Observant and atmospheric, describing the magical elements with wonder and a sensual undertone, highlighting the erotic potential of the environment",
+    eve: "The mysterious guide who appears later, speaks with gentle wisdom about magic, nature, and the art of sensual pleasure, guiding the player on their erotic journey",
+    player: "Choices should reflect a range of reasonable reactions and intentions, with a focus on exploring and expressing sexual desires"
   }
 };
 
@@ -194,7 +161,7 @@ export const INTRO_SCENE = {
   plant: {
     cost: 200,
     description: "The flower seems to respond to your essence. Perhaps with enough energy, it could grow into something more...",
-    growth_text: "As you channel your essence into the flower, it begins to grow and transform. The stem thickens into walls of living bark, branches weave together to form a roof, and leaves unfold into windows. Before your eyes, a small but cozy cottage takes shape, your very own home in these magical woods."
+    growth_text: "As you channel your essence into the flower, it begins to grow and transform in a tantalizing manner. The stem thickens into walls of living bark, branches weave together to form a roof, and leaves unfold into windows. But that's not all - a pixie emerges from the heart of the flower, her body glistening with nectar and her eyes filled with lust. Before your eyes, a small but cozy cottage takes shape, your very own home in these magical woods, complete with your new, insatiable pixie companion."
   },
   buttons: {
     nurture: {

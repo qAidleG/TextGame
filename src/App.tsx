@@ -22,7 +22,6 @@ export interface GameState {
       action: () => void;
     }>;
   };
-  dayRecap?: ResponseStructure['metadata']['dailyRecap'];
 }
 
 function App() {
@@ -30,7 +29,7 @@ function App() {
   const [previousScreen, setPreviousScreen] = useState<Screen>('menu')
   const [gameState, setGameState] = useState<GameState>({
     timeOfDay: 'EVENING',
-    day: 1,
+    day: 0,
     essence: RULES.essence.start,
     phase: 'intro',
     scene: {
